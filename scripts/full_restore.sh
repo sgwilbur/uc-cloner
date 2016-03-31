@@ -30,7 +30,7 @@ do
   sudo rsync -avz --delete ${source}/${cur_dir} ${dest}
 done
 
-## Config updates
+## Config updates on filesystem
 ## /opt/ibm-ucd/server/conf/server/installed.properties
 
 # hibernate.connection.url=jdbc\:mysql\://uc1\:3306/ibm_ucd
@@ -56,7 +56,7 @@ source=${data_dir}/release/conf
 
 sudo rsync -avz --delete ${source} ${dest}
 
-# Update
+# Update configurations on filesystem
 ucr_config=/opt/IBM/UCRelease/ucrelease/conf/installed.properties
 
 # public.url=https\://uc1.prod\:8443/
@@ -68,6 +68,29 @@ ucr_config=/opt/IBM/UCRelease/ucrelease/conf/installed.properties
 # mail.smtp.host=
 
 # update in database
+# Disable ucr integration
+# tables ur_integration_provider
+# select id, name, prop_sheet_id from ur_integration_provider where name = "uc1.prod";
+# this will give you the integration id
+# from the prop_sheet_id you can find your properties
+# update your url property
+
+
+
+echo "Run this following SQL against ibm_ucr"
+echo <<EOI
+# disable the integration
+# update ur_integration_provider
+#  set frequency = '0'
+#  where id = 'f9a2f772-b594-4f0d-b93f-fb57f3c3cc03'
+#  ;
+# or just update the value
+ update ps_prop_value
+  set value = 'https://uc2'
+  where id = '3f1b2e4e-b4fe-4717-bfb1-f4f0c5d6259f'
+  ;
+EOI
+
 
 read -p "Press [Enter] when you are ready to restart the servers..."
 
