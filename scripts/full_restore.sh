@@ -79,16 +79,21 @@ ucr_config=/opt/IBM/UCRelease/ucrelease/conf/installed.properties
 
 echo "Run this following SQL against ibm_ucr"
 echo <<EOI
+update ur_integration_provider
+  set name = 'uc2'
+  where id = '160c1ec6-14da-4e90-8918-170240e11e6f'
+  ;
+
 # disable the integration
 # update ur_integration_provider
 #  set frequency = '0'
-#  where id = 'f9a2f772-b594-4f0d-b93f-fb57f3c3cc03'
+#  where id = '160c1ec6-14da-4e90-8918-170240e11e6f'
 #  ;
 # or just update the value
  update ps_prop_value
   set value = 'https://uc2'
   where id = '3f1b2e4e-b4fe-4717-bfb1-f4f0c5d6259f'
-  ;
+ ;
 EOI
 
 
