@@ -1,0 +1,43 @@
+---
+
+- name: /opt/IBM/UCRelease/ucrelease/conf/server.properties
+  properties:
+    - pattern:  'public.url=.*'
+      replacement: 'public.url=https\\://uc2\\:8443/'
+    - pattern: 'hibernate.connection.url=.*$'
+      replacement: 'hibernate.connection.url=jdbc\:mysql\://uc2\:3306/ibm_ucr'
+    - pattern: 'hibernate.connection.username=.*$'
+      replacement: 'hibernate.connection.username=ibm_uc'
+    - pattern: 'hibernate.connection.password=.*$'
+      replacement: 'hibernate.connection.password=Rat1onal'
+    - pattern: 'license.server.url=.*$'
+      replacement: 'license.server.url=27000@uc2'
+
+- name: /opt/IBM/UCRelease/ucrelease/conf/installed.properties
+  properties:
+    - pattern:  'public.url=.*'
+      replacement: 'public.url=https\\://uc2\\:8443/'
+    - pattern: 'hibernate.connection.url=.*$'
+      replacement: 'hibernate.connection.url=jdbc\:mysql\://uc2\:3306/ibm_ucr'
+    - pattern: 'hibernate.connection.username=.*$'
+      replacement: 'hibernate.connection.username=ibm_uc'
+    - pattern: 'hibernate.connection.password=.*$'
+      replacement: 'hibernate.connection.password=Rat1onal'
+    - pattern: 'license.server.url=.*$'
+      replacement: 'license.server.url=27000@uc2'
+  
+- name: /opt/ibm-ucd/server/conf/server/installed.properties
+  properties:
+    - pattern:  'install.server.web.host=.*$'
+      replacement: 'install.server.web.host=uc2'
+    - pattern:  'server.external.web.url=.*$'
+      replacement: 'server.external.web.url=https\://uc2'
+    - pattern: 'hibernate.connection.url=.*$'
+      replacement: 'hibernate.connection.url=jdbc\:mysql\://uc2\:3306/ibm_ucd'
+    - pattern: 'hibernate.connection.username=.*$'
+      replacement: 'hibernate.connection.username=ibm_uc'
+    - pattern: 'hibernate.connection.password=.*$'
+      replacement: 'hibernate.connection.password=Rat1onal'
+    - pattern: 'license.server.url=.*$'
+      replacement: 'license.server.url=27000@uc2'
+  
