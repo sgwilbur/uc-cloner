@@ -51,8 +51,8 @@ done
 
 
 ## UCR
-dest=/opt/IBM/UCRelease/ucrelease
-source=${data_dir}/release/conf
+dest=/opt/IBM/UCRelease
+source=${data_dir}/release/ucrelease
 
 sudo rsync -avz --delete ${source} ${dest}
 

@@ -29,11 +29,12 @@ source=/opt/ibm-ucd/server/
 for cur_dir in appdata conf
 do
   dest=${data_dir}/deploy
-  rsync -avz ${source}/${cur_dir} ${dest}
+  rsync -avz --delete ${source}/${cur_dir} ${dest}
 done
 
 ## UCR
-source=/opt/IBM/UCRelease/ucrelease/conf
+source=/opt/IBM/UCRelease/ucrelease
+# add plugins
 dest=${data_dir}/release
 
 rsync -avz ${source} ${dest}
@@ -42,6 +43,6 @@ rsync -avz ${source} ${dest}
 # Start the servers
 sudo /opt/ibm-ucd/server/bin/server start
 sudo /opt/IBM/UCRelease/server/server.startup
- 
+
 # Helper
 echo "Backups created in ${data_dir}"
