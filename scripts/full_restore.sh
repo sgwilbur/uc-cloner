@@ -75,9 +75,9 @@ ucr_config=/opt/IBM/UCRelease/ucrelease/conf/installed.properties
 # from the prop_sheet_id you can find your properties
 # update your url property
 
+echo "1. File and db restore is complete."
 
-
-echo "Run this following SQL against ibm_ucr"
+echo "2. Run the SQL against ibm_ucr"
 echo <<EOI
 update ur_integration_provider
   set name = 'uc2'
@@ -96,7 +96,7 @@ update ur_integration_provider
  ;
 EOI
 
-
+echo " 3. Run the configuration file replacement."
 read -p "Press [Enter] when you are ready to restart the servers..."
 
 # Start the servers

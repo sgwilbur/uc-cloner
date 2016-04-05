@@ -12,7 +12,7 @@ from os import remove, close
 def main():
 
   # load my patterns by file
-  with open('u2.yml', 'r') as f:
+  with open('uc2.yml', 'r') as f:
     files = yaml.load(f)
 
   # Go through yaml object that looks like this: array of file objects each containing and array or replacement objects
