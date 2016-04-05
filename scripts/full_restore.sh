@@ -79,6 +79,9 @@ echo "1. File and db restore is complete."
 
 echo "2. Run the SQL against ibm_ucr"
 echo <<EOI
+# first find your integration provider
+# select id, name from uc_integration_provider;
+#
 update ur_integration_provider
   set name = 'uc2'
   where id = '160c1ec6-14da-4e90-8918-170240e11e6f'
