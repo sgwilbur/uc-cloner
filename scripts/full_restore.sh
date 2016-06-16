@@ -1,7 +1,8 @@
 #!/bin/bash
 # full_restore.sh
-
+. ../env.sh
 . ./lib.sh
+
 wait_time=10
 
 # data dir to restore from

@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+#
+# Helper file to perform pattern matching replacements, based on a yaml configuration
+# rather than hardcoding to support runtime changes.
+#
 
 import os
 import yaml

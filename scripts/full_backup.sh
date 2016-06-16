@@ -1,5 +1,6 @@
 #!/bin/bash
 
+. ../env.sh
 . ./lib.sh
 
 wait_time=10
