@@ -1,0 +1,20 @@
+[virtualboxes:vars]
+ansible_ssh_user=vagrant
+ansible_ssh_private_key_file=~/.vagrant.d/insecure_private_key
+
+[virtualboxes]
+ucdata ansible_ssh_host=192.168.35.20
+uc1 ansible_ssh_host=192.168.35.21
+uc2 ansible_ssh_host=192.168.35.22
+uc3 ansible_ssh_host=192.168.35.23
+uc4 ansible_ssh_host=192.168.35.24
+
+
+[data]
+ucdata
+
+[servers]
+uc01
+uc02
+uc03
+uc04
