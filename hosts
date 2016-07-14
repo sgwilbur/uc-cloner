@@ -10,11 +10,15 @@ uc3 ansible_ssh_host=192.168.35.23
 uc4 ansible_ssh_host=192.168.35.24
 
 
-[data]
-ucdata
 
-[servers]
-uc01
-uc02
-uc03
-uc04
+[uc-primary-servers]
+uc1
+uc2
+
+[uc-dr-servers]
+uc3
+uc4
+
+[uc-servers:children]
+uc-primary-servers
+uc-dr-servers

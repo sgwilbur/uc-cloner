@@ -1,0 +1,298 @@
+---
+# Requires an ansible host pattern in the form of uc-{{ env_name }}-servers
+# ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607112210"
+
+  - name: Ensure Backup exists
+    hosts: "ucdata"
+    vars_files:
+      - ./env.yml
+
+    tasks:
+      - name: Validate backup location exists
+        stat: path={{ backup_dir }}
+        register: backup_location
+        tags:
+          - prepare
+
+      - debug: msg="Path exists and is a directory"
+        when: backup_location.stat.isdir is defined and backup_location.stat.isdir
+        tags:
+          - prepare
+
+      ## TODO: How to map from uc1 -> uc3 and uc2 -> uc4
+      ## FIXME: Hardcoded in backup with symlinks to test until I have a better way
+      ## to represent this in meta data
+      - name: Creating hard-coded symlinks
+        command: ln -sf  "{{ item[1].src }}" "{{ item[1].dest }}"
+        args:
+          chdir: "{{ backup_dir }}/{{ item[0] }}"
+        with_nested:
+          - [ 'ucr', 'ucd' ]
+          - [ { src: 'uc1', dest: 'uc3'},  { src: 'uc2', dest: 'uc4'} ]
+
+  - name: Stop UC Servers and restore server configuration
+    hosts: "uc-{{ target_env_name }}-servers"
+    become: yes
+    become_method: sudo
+    vars_files:
+      - ./env.yml
+
+    tasks:
+
+      - name: Stop UCD server(s)
+        command: "{{ ucd.install_dir }}/bin/server stop"
+        # service:
+        #   name: ibm-ucd-server
+        #   state: stopped
+        tags:
+          - ucd
+          - shutdown
+
+      - name: Stop UCR server(s)
+        command: "{{ ucr.install_dir }}/server/server.shutdown"
+        # service:
+        #   name: ibm-release-server
+        #   state: stopped
+        #   pattern: "{{ ucr.install_dir }}/server/jre/bin/java"
+        #   sleep: 3
+        tags:
+          - ucr
+          - shutdown
+
+      - name: Wait for UCR Port to become inactive
+        wait_for:
+          state: stopped
+          port: "{{ ucr.http_port }}"
+          delay: 3
+        tags:
+          - ucr
+          - shutdown
+
+      - name: Wait for UCD port to become inactive
+        wait_for:
+          state: stopped
+          port: "{{ ucd.http_port }}"
+          delay: 3
+        tags:
+          - ucd
+          - shutdown
+
+      - name: Restore UCD server install filesystem
+        synchronize:
+          mode: push
+          delete: yes
+          src: "{{ local_backup_dir }}/ucd/{{ inventory_hostname }}/"
+          dest: "{{ ucd.install_dir }}/"
+        tags:
+          - ucd
+          - reconfig
+          - sync
+
+## TODO: Apply configuration level updates for UCD
+## {{ ucd.install_dir }}/conf/server/installed.properties
+
+      - name: Update Non-server specific UCD installed.properties configurations
+        replace:
+          dest: "{{ ucd.install_dir }}/conf/server/installed.properties"
+          regexp: "{{ item.regex }}"
+          replace: "{{ item.replacement }}"
+        with_items:
+          - { regex: '^(.*)=/vagrant/data/ucd{{ env_name }}(.*)', replacement: '\1=/vagrant/data/ucd{{ target_env_name }}\2' }
+          - { regex: '(server.external.web.url)=.*$', replacement: '\1={{ ucd[ target_env_name ].external_web_url }}' }
+          - { regex: '(hibernate.connection.url)=.*$', replacement: '\1={{ ucd[ target_env_name].jdbc_url }}' }
+          - { regex: '(hibernate.connection.username)=.*$', replacement: '\1={{ ucd[ target_env_name].db_user }}' }
+          - { regex: '(hibernate.connection.password)=.*$\=}', replacement: '\1={{ ucd[ target_env_name].db_password }}' }
+          - { regex: '(install.server.web.host)=.*$', replacement: '\1={{ ansible_hostname }}' }
+          - { regex: '(install.server.web.port)=.*$', replacement: '\1={{ ucd[ target_env_name ].http_port }}' }
+          # - { regex: '', replacement: '' }
+        tags:
+          - ucd
+          - reconfig
+
+      - name: Restore UCR server install filesystem
+        synchronize:
+          mode: push
+          delete: yes
+          src: "{{ local_backup_dir }}/ucr/{{ inventory_hostname }}/"
+          dest: "{{ ucr.install_dir }}"
+        tags:
+          - ucr
+          - sync
+
+## TODO: Apply configuration level updates for UCR properties
+## {{ ucr.install_dir }}/ucrelease/conf/server.properties
+
+      - name: Update Non-server specific UCR installed.properties configurations
+        replace:
+          dest: "{{ ucr.install_dir }}/ucrelease/conf/server.properties"
+          regexp: "{{ item.regex }}"
+          replace: "{{ item.replacement }}"
+        with_items:
+          # - { regex: '', replacement: '' }
+          - { regex: '^(.*)=/vagrant/data/ucr{{ env_name }}(.*)', replacement: '\1=/vagrant/data/ucr{{ target_env_name }}\2' }
+          - { regex: '(public.url)=.*$', replacement: '\1={{ ucr[ target_env_name ].public_url }}' }
+          - { regex: '(hibernate.connection.url)=.*$', replacement: '\1={{ ucr[ target_env_name].jdbc_url }}' }
+          - { regex: '(hibernate.connection.username)=.*$', replacement: '\1={{ ucr[ target_env_name].db_user }}' }
+          - { regex: '(hibernate.connection.password)=.*$\=}', replacement: '\1={{ ucr[ target_env_name].db_password }}' }
+          # - { regex: '', replacement: '' }
+        tags:
+          - ucr
+          - reconfig
+
+  # Restore the database and appdata information
+  - name: Full UC restore of Databases
+    hosts: "ucdata"
+    vars_files:
+      - ./env.yml
+
+    tasks:
+      - name: Update apt cache
+        apt: update_cache=yes cache_valid_time=3600
+
+      - name: install python mysql bindings
+        apt: name=python-mysqldb state=installed
+        become: yes
+        become_method: sudo
+
+      # Special mix here, the name/user/pass are dest but the import file is from the source_env
+      - name: Restore UCD Database
+        mysql_db:
+          state: import
+          name: "{{ ucd[ target_env_name ].db_name }}"
+          login_user: "{{ ucd[ target_env_name ].db_user }}"
+          login_password: "{{ ucd[ target_env_name ].db_password }}"
+          target: "{{ backup_dir }}/ucd/{{ ucd[ env_name ].db_name }}.sql"
+        tags:
+          - ucd
+          - backup
+          - db
+
+      ## TODO: Apply db level changes for UCD
+
+      # Reconfigure Network Relays
+      - name: Reconfigure Network Relays
+        when: env_name == "primary" and target_env_name == "dr"
+        mysql_db:
+          state: import
+          name: "{{ ucd[ target_env_name ].db_name }}"
+          login_user: "{{ ucd[ target_env_name ].db_user }}"
+          login_password: "{{ ucd[ target_env_name ].db_password }}"
+          target: "{{ data_dir }}/db_scripts/update_network_relays.sql"
+
+      # Turn off Component imports when restoring to DR
+      - name: Disable all component imports
+        when: target_env_name == 'dr'
+        mysql_db:
+          state: import
+          name: "{{ ucd[ target_env_name ].db_name }}"
+          login_user: "{{ ucd[ target_env_name ].db_user }}"
+          login_password: "{{ ucd[ target_env_name ].db_password }}"
+          target: "{{ data_dir }}/db_scripts/disable_component_imports.sql"
+
+      ## TODO: Apply db level changes for UCD
+
+      - name: Restore UCR Database
+        mysql_db:
+          state: import
+          name: "{{ ucr[ target_env_name ].db_name }}"
+          login_user: "{{ ucr[ target_env_name ].db_user }}"
+          login_password: "{{ ucr[ target_env_name ].db_password }}"
+          target: "{{ backup_dir }}/ucr/{{ ucr[ env_name ].db_name }}.sql"
+        tags:
+          - ucr
+          - backup
+          - db
+
+      # Update integration endpoints when restoring to dr
+      - name: Update UCR Integration endpoints when restoring to dr
+        when: target_env_name == 'dr'
+        mysql_db:
+          state: import
+          name: "{{ ucr[ target_env_name ].db_name }}"
+          login_user: "{{ ucr[ target_env_name ].db_user }}"
+          login_password: "{{ ucr[ target_env_name ].db_password }}"
+          target: "{{ data_dir }}/db_scripts/ucr_update_integrations.sql"
+
+## TODO: Apply db level changes for UCR
+
+
+## TODO: Using env_name to select source env and adding dest manually for now
+
+      # Restore UCR file
+      - name: Restore UCR appdata filesystem
+        synchronize:
+          mode: push
+          delete: yes
+          src: "{{ local_backup_dir }}/ucr/appdata/"
+          dest: "{{ data_dir }}/ucr{{ target_env_name }}"
+        tags:
+          - ucr
+          - backup
+          - sync
+
+       # Restore UCD files
+      - name: Restore UCD appdata filesystem
+        synchronize:
+          mode: push
+          delete: yes
+          src:  "{{ local_backup_dir }}/ucd/appdata/"
+          dest: "{{ data_dir }}/ucd{{ target_env_name }}"
+        tags:
+          - ucd
+          - backup
+          - sync
+
+  #  Reconfigure and Start the servers back up
+  - name: Start Servers
+    hosts: "uc-{{ target_env_name }}-servers"
+    become: yes
+    become_method: sudo
+    vars_files:
+      - ./env.yml
+
+    tasks:
+
+  #  * Update database ?
+  #  * Update configuration files
+
+      - name: Start server
+        service:
+          name: ibm-ucd-server
+          state: started
+        tags:
+          - ucd
+          - startup
+
+      - name: Wait for Port to become active again
+        wait_for:
+          state: started
+          port: "{{ ucd.http_port }}"
+          delay: 3
+        tags:
+          - ucd
+          - startup
+
+      - name: Start UCR server
+        service:
+          name: ibm-release-server
+          state: started
+        register:
+          server_startup
+        tags:
+          - ucr
+          - startup
+
+      - name: Service Startup output
+        debug: var=server_startup
+        tags:
+          - ucr
+          - startup
+
+      - name: Wait for Port to become active again
+        wait_for:
+          state: started
+          port: "{{ ucr.http_port }}"
+          delay: 3
+        tags:
+          - ucr
+          - startup

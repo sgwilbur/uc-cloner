@@ -1,0 +1,106 @@
+global
+	log /dev/log	local0
+	log /dev/log	local1 notice
+	chroot /var/lib/haproxy
+	user haproxy
+	group haproxy
+	daemon
+
+defaults
+	log	global
+	mode	http
+
+	option	httplog
+ 	#option  httpchk
+	option	dontlognull
+## Breadking UCD for some reason... ?
+#        option  http-server-close
+#        option 	forwardfor       except 127.0.0.0/8
+        option  redispatch
+        timeout http-request    10s
+        timeout queue           1m
+        timeout connect         10s
+        timeout client          1m
+        timeout server          1m
+        timeout http-keep-alive 10s
+        timeout check           10s
+	errorfile 400 /etc/haproxy/errors/400.http
+	errorfile 403 /etc/haproxy/errors/403.http
+	errorfile 408 /etc/haproxy/errors/408.http
+	errorfile 500 /etc/haproxy/errors/500.http
+	errorfile 502 /etc/haproxy/errors/502.http
+	errorfile 503 /etc/haproxy/errors/503.http
+	errorfile 504 /etc/haproxy/errors/504.http
+
+frontend http-in
+	log global
+        bind 0.0.0.0:80
+
+	## Mandatory to build the URL:
+ 	capture request  header Host       	len 32
+	capture request  header X-Forwarded-For len 25
+	capture response header X-Forwarded-For len 25
+
+	# Define hosts
+	acl ucd_host hdr(host) -i ucd.demo
+	acl ucddr_host hdr(host) -i ucddr.demo
+
+	use_backend ucd if ucd_host
+	use_backend ucddr if ucddr_host
+	
+
+frontend http-in-81
+	log global
+        bind 0.0.0.0:81
+
+	## Mandatory to build the URL:
+ 	capture request  header Host   	    	len 32
+	capture request  header X-Forwarded-For len 25
+	capture response header X-Forwarded-For len 25
+
+	# Define hosts
+        acl ucr_host 	hdr(host) -i -m beg ucr.demo
+        acl ucrdr_host	hdr(host) -i -m beg ucrdr.demo
+
+        use_backend ucr 	if ucr_host
+        use_backend ucrdr 	if ucrdr_host
+
+
+backend ucd
+	log global
+        cookie JSESSIONID prefix
+        cookie UCD_SESSION_KEY
+	balance roundrobin
+        server uc1 uc1:80 check
+        server uc2 uc2:80 check
+
+backend ucr
+	log global
+        cookie JSESSIONID prefix
+        cookie UCR_SESSION_KEY
+	balance roundrobin
+        server uc1 uc1:81 check
+        server uc2 uc2:81 check
+
+backend ucddr
+	log global
+        cookie JSESSIONID prefix
+        cookie UCD_SESSION_KEY
+	balance roundrobin
+        server uc3 uc3:80 check
+        server uc4 uc4:80 check
+
+backend ucrdr
+	log global
+        cookie JSESSIONID prefix
+        cookie UCR_SESSION_KEY
+	balance roundrobin
+        server uc3 uc3:81 check
+        server uc4 uc4:81 check
+
+listen stats :9000 
+    mode http
+    stats enable 
+    stats realm Haproxy\ Statistics 
+    stats uri /stats 
+    stats auth admin:admin 

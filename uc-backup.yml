@@ -1,0 +1,230 @@
+---
+  # Requires a ansible host pattern of the form uc-{{ env_name }}-servers to work properly
+  # ansible-playbook -i hosts uc-backup-primary.yml --extra-vars="env_name=primary ts=201607112130"
+
+  - name: Prepare for Backup
+    hosts: "ucdata"
+    vars_files:
+      - ./env.yml
+
+    tasks:
+      - name: Prepare backup directory
+        file:
+          path: "{{ item }}"
+          state: directory
+          recurse: yes
+        with_items:
+          - "{{ backup_dir }}/ucd"
+          - "{{ backup_dir }}/ucr"
+        tags:
+          - ucd
+          - ucr
+          - prepare
+
+  - name: Stop Servers and backup config
+    hosts: "uc-{{ env_name }}-servers"
+    become: yes
+    become_method: sudo
+    vars_files:
+      - ./env.yml
+
+    tasks:
+
+      - name: Stop server(s)
+        command: "{{ ucd.install_dir }}/bin/server stop"
+        # service:
+        #   name: ibm-ucd-server
+        #   state: stopped
+        tags:
+          - ucd
+          - shutdown
+
+      - name: Stop server(s)
+        command: "{{ ucr.install_dir }}/server/server.shutdown"
+        # service:
+        #   name: ibm-release-server
+        #   state: stopped
+        #   pattern: "{{ ucr.install_dir }}/server/jre/bin/java"
+        #   sleep: 3
+        tags:
+          - ucr
+          - shutdown
+
+      - name: Wait for UCR Port to become inactive
+        wait_for:
+          state: stopped
+          port: "{{ ucr.http_port }}"
+          delay: 3
+        tags:
+          - ucr
+          - shutdown
+
+      - name: Wait for UCD Port to become inactive
+        wait_for:
+          state: stopped
+          port: "{{ ucd.http_port }}"
+          delay: 3
+        tags:
+          - ucd
+          - shutdown
+
+       # Backup individual server files
+      - name: Create dir for specific server
+        file:
+          state: directory
+          path: "{{ local_backup_dir }}/{{ inventory_hostname }}"
+          recurse: yes
+        with_items:
+          - "{{ local_backup_dir }}/ucd/{{ inventory_hostname }}"
+          - "{{ local_backup_dir }}/ucr/{{ inventory_hostname }}"
+        tags:
+          - ucd
+          - ucr
+          - sync
+
+      - name: Backup UCD server install filesystem
+        synchronize:
+          mode: pull
+          delete: no
+          src: "{{ ucd.install_dir }}/"
+          dest: "{{ local_backup_dir }}/ucd/{{ inventory_hostname }}"
+          # rsync_opts:
+          #   - "--include=conf"
+          #   - "--include=opt/tomcat/conf"
+        tags:
+          - ucd
+          - sync
+
+      - name: Backup UCR server install filesystem
+        synchronize:
+          mode: pull
+          delete: no
+          src: "{{ ucr.install_dir }}/"
+          dest: "{{ local_backup_dir }}/ucr/{{ inventory_hostname }}"
+          # rsync_opts:
+          #   - "--include=ucrelease"
+          #   - "--include=server/tomcat/conf"
+          #   - "--include=server/ibm-release-server.init"
+        tags:
+
+          - ucr
+          - sync
+
+  # Backup the database and appdata information
+  - name: Full Backup for UCD
+    hosts: "ucdata"
+    vars_files:
+      - ./env.yml
+
+    tasks:
+      - name: Update apt cache
+        apt: update_cache=yes cache_valid_time=3600
+
+      - name: install python mysql bindings
+        apt: name=python-mysqldb state=installed
+        become: yes
+        become_method: sudo
+
+      - name: Backup UCD Database
+        mysql_db:
+          state: dump
+          name: "{{ ucd[ env_name ].db_name }}"
+          login_user: "{{ ucd[ env_name ].db_user }}"
+          login_password: "{{ ucd[ env_name ].db_password }}"
+          target: "{{ backup_dir }}/ucd/{{ ucd[ env_name ].db_name }}.sql"
+        tags:
+          - ucd
+          - backup
+          - db
+
+      - name: Backup UCR Database
+        mysql_db:
+          state: dump
+          name: "{{ ucr[ env_name ].db_name }}"
+          login_user: "{{ ucr[ env_name ].db_user }}"
+          login_password: "{{ ucr[ env_name ].db_password }}"
+          target: "{{ backup_dir }}/ucr/{{ ucr[ env_name ].db_name }}.sql"
+        tags:
+          - ucr
+          - backup
+          - db
+
+
+## TODO: Consolidate these two ? It is only possible since my ucdata machine has
+# a local mount of these shared filesystems, so this is a bit of an unusual case,
+# perhaps this should be converted to be more explicit
+
+       # Backup server files
+      - name: Backup UCR appdata filesystem
+        synchronize:
+          mode: pull
+          delete: no
+          src: "{{ ucr.appdata_dir }}/"
+          dest: "{{ local_backup_dir }}/ucr/appdata"
+        tags:
+          - ucr
+          - backup
+          - sync
+
+       # Backup server files
+      - name: Backup UCD appdata filesystem
+        synchronize:
+          mode: pull
+          delete: no
+          src: "{{ ucd.appdata_dir }}/"
+          dest: "{{ local_backup_dir }}/ucd/appdata"
+        tags:
+          - ucd
+          - backup
+          - sync
+
+  # Start the servers back up
+  - name: Start Servers
+    hosts: "uc-{{ env_name }}-servers"
+    become: yes
+    become_method: sudo
+    vars_files:
+      - ./env.yml
+
+    tasks:
+      - name: Start UCD server
+        service:
+          name: ibm-ucd-server
+          state: started
+        tags:
+          - ucd
+          - startup
+
+      - name: Wait for UCD Port to become active again
+        wait_for:
+          state: started
+          port: "{{ ucd.http_port }}"
+          delay: 3
+        tags:
+          - ucd
+          - startup
+
+      - name: Start UCR server
+        service:
+          name: ibm-release-server
+          state: started
+        register:
+          server_startup
+        tags:
+          - ucr
+          - startup
+
+      - name: Service Startup output
+        debug: var=server_startup
+        tags:
+          - ucr
+          - startup
+
+      - name: Wait for Port to become active again
+        wait_for:
+          state: started
+          port: "{{ ucr.http_port }}"
+          delay: 3
+        tags:
+          - ucr
+          - startup
