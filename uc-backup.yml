@@ -1,6 +1,6 @@
 ---
   # Requires a ansible host pattern of the form uc-{{ env_name }}-servers to work properly
-  # ansible-playbook -i hosts uc-backup-primary.yml --extra-vars="env_name=primary ts=201607112130"
+  # ansible-playbook -i hosts uc-backup.yml --extra-vars="env_name=primary ts=201607112130"
 
   - name: Prepare for Backup
     hosts: "ucdata"

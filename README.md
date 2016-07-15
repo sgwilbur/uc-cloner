@@ -19,6 +19,59 @@ UrbanCode Release:
  * Using a shared filesystem for application data at at `/vagrant/data/ucr${env_name}/...`
  * Add JAVA_HOME to server.startup script to ensure plugins will run ( Defect that seems to still be there...)
 
+#### backup procedure
+
+    ansible-playbook -i hosts uc-backup-primary.yml --extra-vars="env_name=primary ts=201607112130"
+
+
+    amon:backup sgwilbur$ tree -L 5
+    .
+    ├── dr
+    │   └── F201607112210
+    │       ├── ucd
+    │       │   ├── appdata
+    │       │   │   ├── conf
+    │       │   │   ├── patches
+    │       │   │   └── var
+    │       │   ├── ibm_ucd02.sql
+    │       │   ├── uc3
+    |       │   │   ├── bin
+    |       │   │   ├── conf
+    │       │   │   ├── endorsed
+    │       │   │   ├── extensions
+    │       │   │   ├── ilmt
+    │       │   │   ├── lib
+    │       │   │   ├── licenses
+    │       │   │   ├── native
+    │       │   │   ├── notices
+    │       │   │   ├── opt
+    │       │   │   └── var
+    │       │   └── uc4
+    │       │       └── ...
+    │       └── ucr
+    │           ├── appdata
+    │           |   ├── attachments
+    │           |   └── plugins
+    │           ├── ibm_ucr02.sql
+    │           ├── uc3
+    │           |   ├── conf -> ucrelease/conf
+    │           |   ├── groovy-2.1.9
+    │           |   ├── internal
+    │           |   ├── logs -> server/tomcat/logs
+    │           |   └── server
+    │           └── uc4
+    │               └── ...
+    └── primary
+        ├── F201607112210
+        │   └── ...
+        ├── F201607121045
+        │   └── ...
+        └── F201607130916
+            └── ...
+#### Restore environment
+
+    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607142242"
+
 
 
 #### Ad-hoc commands

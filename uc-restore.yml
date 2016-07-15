@@ -177,7 +177,7 @@
           name: "{{ ucd[ target_env_name ].db_name }}"
           login_user: "{{ ucd[ target_env_name ].db_user }}"
           login_password: "{{ ucd[ target_env_name ].db_password }}"
-          target: "{{ data_dir }}/db_scripts/update_network_relays.sql"
+          target: "{{ data_dir }}/db_scripts/ucd-update_network_relays.sql"
 
       # Turn off Component imports when restoring to DR
       - name: Disable all component imports
@@ -187,9 +187,9 @@
           name: "{{ ucd[ target_env_name ].db_name }}"
           login_user: "{{ ucd[ target_env_name ].db_user }}"
           login_password: "{{ ucd[ target_env_name ].db_password }}"
-          target: "{{ data_dir }}/db_scripts/disable_component_imports.sql"
+          target: "{{ data_dir }}/db_scripts/ucd-disable_component_imports.sql"
 
-      ## TODO: Apply db level changes for UCD
+      ## TODO: Add update to public url
 
       - name: Restore UCR Database
         mysql_db:
@@ -203,6 +203,8 @@
           - backup
           - db
 
+## TODO: Apply db level changes for UCR
+
       # Update integration endpoints when restoring to dr
       - name: Update UCR Integration endpoints when restoring to dr
         when: target_env_name == 'dr'
@@ -211,9 +213,14 @@
           name: "{{ ucr[ target_env_name ].db_name }}"
           login_user: "{{ ucr[ target_env_name ].db_user }}"
           login_password: "{{ ucr[ target_env_name ].db_password }}"
-          target: "{{ data_dir }}/db_scripts/ucr_update_integrations.sql"
+          target: "{{ item }}"
+        with_items:
+          - "{{ data_dir }}/db_scripts/ucr-update_integrations.sql"
+          - "{{ data_dir }}/db_scripts/ucr-update_public_url.sql"
+        tags:
+          - ucr
+          - db
 
-## TODO: Apply db level changes for UCR
 
 
 ## TODO: Using env_name to select source env and adding dest manually for now
