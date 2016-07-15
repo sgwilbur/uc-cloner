@@ -140,6 +140,7 @@
           - reconfig
 
   # Restore the database and appdata information
+  # Special mix here, the name/user/pass are dest but the import file is from the source_env
   - name: Full UC restore of Databases
     hosts: "ucdata"
     vars_files:
@@ -154,7 +155,7 @@
         become: yes
         become_method: sudo
 
-      # Special mix here, the name/user/pass are dest but the import file is from the source_env
+      ## Restore UCD Database
       - name: Restore UCD Database
         mysql_db:
           state: import
@@ -167,19 +168,9 @@
           - backup
           - db
 
-      ## TODO: Apply db level changes for UCD
+      ## Apply db level changes for UCD
 
-      # Reconfigure Network Relays
-      - name: Reconfigure Network Relays
-        when: env_name == "primary" and target_env_name == "dr"
-        mysql_db:
-          state: import
-          name: "{{ ucd[ target_env_name ].db_name }}"
-          login_user: "{{ ucd[ target_env_name ].db_user }}"
-          login_password: "{{ ucd[ target_env_name ].db_password }}"
-          target: "{{ data_dir }}/db_scripts/ucd-update_network_relays.sql"
-
-      # Turn off Component imports when restoring to DR
+      # When restoring to DR
       - name: Disable all component imports
         when: target_env_name == 'dr'
         mysql_db:
@@ -187,10 +178,16 @@
           name: "{{ ucd[ target_env_name ].db_name }}"
           login_user: "{{ ucd[ target_env_name ].db_user }}"
           login_password: "{{ ucd[ target_env_name ].db_password }}"
-          target: "{{ data_dir }}/db_scripts/ucd-disable_component_imports.sql"
+          target: "{{ item }}"
+        with_items:
+          # Update Public web and agent URLs
+          - "{{ data_dir }}/db_scripts/ucd-update_public_url.sql"
+          # Turn off Component imports when restoring to DR
+          - "{{ data_dir }}/db_scripts/ucd-disable_component_imports.sql"
+          # Reconfigure Network Relays
+          - "{{ data_dir }}/db_scripts/ucd-update_network_relays.sql"
 
-      ## TODO: Add update to public url
-
+      ## Restore UCR database
       - name: Restore UCR Database
         mysql_db:
           state: import

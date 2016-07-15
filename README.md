@@ -78,3 +78,9 @@ UrbanCode Release:
 
     ansible uc-primary-servers -i hosts -become -m service -a "name=ibm-release-server state=started"
     ansible uc-primary-servers -i hosts -become -m service -a "name=ibm-ucd-server state=started"
+
+
+#### Errors
+
+ * UCR Error after logging in - `Invalid AES key length: 7 bytes`
+    Indicates the cookie being shared between UCR HA nodes are not valid.
