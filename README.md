@@ -118,6 +118,15 @@ For this example, I have implemented a reference process in Ansible to perform t
 
     ansible-playbook -i hosts uc-backup-primary.yml --extra-vars="env_name=primary ts=201607112130"
 
+
+#### Restore environment
+
+    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607142242"
+
+#### View of the example filesystem structure
+
+View of the generated filesystem layout that we are working out of:
+
     amon:backup sgwilbur$ tree -L 5
     .
     ├── dr
@@ -162,9 +171,6 @@ For this example, I have implemented a reference process in Ansible to perform t
         │   └── ...
         └── F201607130916
             └── ...
-#### Restore environment
-
-    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607142242"
 
 #### Ad-hoc commands
 
@@ -180,4 +186,4 @@ Some useful ad-hoc commands for managing environments.
 #### Errors
 
  * UCR Error after logging in - `Invalid AES key length: XXX bytes`
-    Indicates the cookie being shared between UCR HA nodes are not valid.
+    Indicates the cookie being shared between UCR HA nodes is not valid.
