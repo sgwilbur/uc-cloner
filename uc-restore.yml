@@ -88,8 +88,8 @@
           - reconfig
           - sync
 
-## TODO: Apply configuration level updates for UCD
-## {{ ucd.install_dir }}/conf/server/installed.properties
+      ## Apply configuration level updates for UCD
+      ## {{ ucd.install_dir }}/conf/server/installed.properties
 
       - name: Update Non-server specific UCD installed.properties configurations
         replace:
@@ -119,8 +119,8 @@
           - ucr
           - sync
 
-## TODO: Apply configuration level updates for UCR properties
-## {{ ucr.install_dir }}/ucrelease/conf/server.properties
+      ## Apply configuration level updates for UCR properties
+      ## {{ ucr.install_dir }}/ucrelease/conf/server.properties
 
       - name: Update Non-server specific UCR installed.properties configurations
         replace:
@@ -128,7 +128,6 @@
           regexp: "{{ item.regex }}"
           replace: "{{ item.replacement }}"
         with_items:
-          # - { regex: '', replacement: '' }
           - { regex: '^(.*)=/vagrant/data/ucr{{ env_name }}(.*)', replacement: '\1=/vagrant/data/ucr{{ target_env_name }}\2' }
           - { regex: '(public.url)=.*$', replacement: '\1={{ ucr[ target_env_name ].public_url }}' }
           - { regex: '(hibernate.connection.url)=.*$', replacement: '\1={{ ucr[ target_env_name].jdbc_url }}' }
@@ -145,6 +144,8 @@
     hosts: "ucdata"
     vars_files:
       - ./env.yml
+    vars:
+      db_script_dir: "{{ data_dir }}/db_scripts"
 
     tasks:
       - name: Update apt cache
@@ -154,6 +155,11 @@
         apt: name=python-mysqldb state=installed
         become: yes
         become_method: sudo
+
+      ## Generate DB Scripts from templates
+      # TODO: Convert hard-coded db-scripts to use environment variables
+      #- name: Generate DB scripts
+
 
       ## Restore UCD Database
       - name: Restore UCD Database
@@ -200,7 +206,7 @@
           - backup
           - db
 
-## TODO: Apply db level changes for UCR
+      ## Apply database level changes for UCR
 
       # Update integration endpoints when restoring to dr
       - name: Update UCR Integration endpoints when restoring to dr
@@ -217,10 +223,6 @@
         tags:
           - ucr
           - db
-
-
-
-## TODO: Using env_name to select source env and adding dest manually for now
 
       # Restore UCR file
       - name: Restore UCR appdata filesystem
@@ -246,7 +248,7 @@
           - backup
           - sync
 
-  #  Reconfigure and Start the servers back up
+  #  Start the servers back up
   - name: Start Servers
     hosts: "uc-{{ target_env_name }}-servers"
     become: yes
@@ -255,10 +257,6 @@
       - ./env.yml
 
     tasks:
-
-  #  * Update database ?
-  #  * Update configuration files
-
       - name: Start server
         service:
           name: ibm-ucd-server

@@ -101,6 +101,7 @@
           delete: no
           src: "{{ ucr.install_dir }}/"
           dest: "{{ local_backup_dir }}/ucr/{{ inventory_hostname }}"
+          # TODO: Currently backups up the entire server directory
           # rsync_opts:
           #   - "--include=ucrelease"
           #   - "--include=server/tomcat/conf"
