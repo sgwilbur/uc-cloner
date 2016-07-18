@@ -1,0 +1,15 @@
+---
+
+  - name: Install IM onto targets
+    hosts: uc-servers
+    become: yes
+    become_method: sudo
+    vars:
+      my_media_host: http://192.168.1.11:81
+      my_platform: linux
+      my_arch: x86_64
+      my_version: 1.8.5.0
+      my_version_tag: 1.8.5000.20160506_1125
+
+    roles:
+      - { role: sgwilbur.ibm-installation-manager, media_host: "{{ my_media_host }}", arch: "{{ my_arch }}", version: "{{ my_version }}", version_tag: "{{ my_version_tag }}" }
