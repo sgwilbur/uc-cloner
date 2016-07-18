@@ -116,7 +116,7 @@ For this example, I have implemented a reference process in Ansible to perform t
 
 #### Backup procedure
 
-    ansible-playbook -i hosts uc-backup-primary.yml --extra-vars="env_name=primary ts=201607112130"
+    ansible-playbook -i hosts uc-backup.yml --extra-vars="env_name=primary ts=201607112130"
 
 
 #### Restore environment
