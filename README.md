@@ -116,16 +116,47 @@ For this example, I have implemented a reference process in Ansible to perform t
 
 #### Backup procedure
 
-    ansible-playbook -i hosts uc-backup.yml --extra-vars="env_name=primary ts=201607112130"
+To perform a backup:
+
+    ansible-playbook -i hosts uc-backup.yml --extra-vars="env_name={primary|dr} ts={timestamp}"
+
+Specific example:
+
+    ansible-playbook -i hosts uc-backup.yml --extra-vars="env_name=primary ts=201607181510"
 
 
 #### Restore environment
 
-    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607142242"
+To perform a restore to an environment:
+
+    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name={primary|dr} target_env_name={primary|dr} ts={timestamp}"
+
+To restore production back to a specific backup:
+
+    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=primary ts=201607121045"
+
+
+To restore a specific backup to DR:
+
+    ansible-playbook -i hosts uc-restore.yml --extra-vars="env_name=primary target_env_name=dr ts=201607181510"
 
 #### View of the example filesystem structure
 
-View of the generated filesystem layout that we are working out of:
+View of the generated filesystem layout that we are working out of and how the env_name, timestamp, application and data is being stored for backup by convention so a simple share.
+
+Generic version showing variables:
+
+    .
+    ├── { env_name }
+    │   └── { timestamp }
+    │       ├── { application }
+    │       │   ├── appdata
+    │       │   │   └── { application data }
+    │       │   ├── { db_name }.sql
+    │       │   ├── { server_name }
+    │       │      └── { server dir contents }
+
+Specific example of how this looks
 
     amon:backup sgwilbur$ tree -L 5
     .
